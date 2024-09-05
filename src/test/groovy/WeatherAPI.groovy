@@ -8,21 +8,18 @@ class WeatherAPI extends Specification {
 
     @Unroll
     def "should fetch weather forecast for #cityName for #days days"() {
-        given: "An API URL and key"
+        given: "An API URL and key and the language"
         def apiKey = 'b2ce5b9466a4cdcec5e7a6bf11465c5a'
         def lang = "en"
         def url = "https://api.openweathermap.org/data/2.5/forecast/daily?q=${cityName},&cnt=${days}&lang=${lang}&appid=${apiKey}"
 
         and: "An HTTPBuilder instance"
-        def http = new HTTPBuilder(url)
+        def http = RequestWrapper.createHttpBuilder(url)
 
         when: "The API request is sent"
-        def responseJson
-        def statusLine
-        http.get(contentType: ContentType.JSON) { resp, json ->
-            statusLine = resp.statusLine
-            responseJson = json
-        }
+        def result = RequestWrapper.sendGetRequest(http)
+        def statusLine = result.statusLine
+        def responseJson = result.responseJson
 
         then: "The status code should be 200 (OK)"
         statusLine.statusCode == 200
