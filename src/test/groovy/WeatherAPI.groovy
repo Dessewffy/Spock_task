@@ -1,5 +1,4 @@
-import groovyx.net.http.ContentType
-import groovyx.net.http.HTTPBuilder
+
 import java.text.SimpleDateFormat
 import spock.lang.Specification
 import spock.lang.Unroll
