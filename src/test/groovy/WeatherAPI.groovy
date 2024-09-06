@@ -55,6 +55,10 @@ class WeatherAPI extends Specification {
         'Budapest,HU' | 7
         'Paris,FR'    | 5
         'Berlin,DE'   | 3
+
+
     }
+
+
 }
 
