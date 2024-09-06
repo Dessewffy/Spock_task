@@ -7,18 +7,24 @@ class WeatherAPI extends Specification {
 
     @Unroll
     def "should fetch weather forecast for #cityName for #days days"() {
-        given: "An API URL and key and the language"
+        given: "An API key, language, and HTTPBuilder instance"
         def apiKey = 'b2ce5b9466a4cdcec5e7a6bf11465c5a'
         def lang = "en"
-        def url = "https://api.openweathermap.org/data/2.5/forecast/daily?q=${cityName},&cnt=${days}&lang=${lang}&appid=${apiKey}"
+        def baseUrl = 'https://api.openweathermap.org'
 
-        and: "An HTTPBuilder instance"
-        def http = RequestWrapper.createHttpBuilder(url)
+        and: "Create the HTTPBuilder using RequestWrapper"
+        def http = RequestWrapper.createHttpBuilder(baseUrl)
 
         when: "The API request is sent"
-        def result = RequestWrapper.sendGetRequest(http)
+        def result = RequestWrapper.sendGetRequest(http,
+                '/data/2.5/forecast/daily',
+                [q: cityName, cnt: days, lang: lang, appid: apiKey])
+
         def statusLine = result.statusLine
         def responseJson = result.responseJson
+
+        then: "Ensure that we received a status line"
+        assert statusLine != null : "No status line received from API call."
 
         then: "The status code should be 200 (OK)"
         statusLine.statusCode == 200
@@ -42,11 +48,10 @@ class WeatherAPI extends Specification {
             println "Temperature: ${temp.round(2)}°C"
             println "Description: ${description.capitalize()}"
             println ""
-
         }
 
         where:
-        cityName     | days //Parametrization
+        cityName     | days // Parametrization
         'Budapest,HU' | 7
         'Paris,FR'    | 5
         'Berlin,DE'   | 3

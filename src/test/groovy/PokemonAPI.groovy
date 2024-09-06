@@ -1,28 +1,25 @@
 import spock.lang.Specification
+import spock.lang.Unroll
 
 class PokemonAPI extends Specification {
 
     def responseJson
     def encounterJson
 
-
-    def cleanup() {
-        // After every test clean up
-        responseJson = null
-        encounterJson = null
-    }
-
+    @Unroll
     def "Check the pokemon data"() {
         given: "A Pokemon name"
         def pokemonName = pokemonNameParam // I set it in the where block
 
         when: "We send a request to fetch Pokemon data"
-        def url = "https://pokeapi.co/api/v2/pokemon/${pokemonName}"
-        def http = RequestWrapper.createHttpBuilder(url)
-        def result = RequestWrapper.sendGetRequest(http)
+        def baseUrl = "https://pokeapi.co"
+        def path = "/api/v2/pokemon/${pokemonName}"
+        def http = RequestWrapper.createHttpBuilder(baseUrl)
+        def result = RequestWrapper.sendGetRequest(http, path, [:])
         responseJson = result.responseJson
 
         then: "The response should be valid"
+        assert result.statusLine != null : "No status line received from API call."
         result.statusLine.statusCode == 200
         responseJson.name == pokemonName
 
@@ -40,20 +37,23 @@ class PokemonAPI extends Specification {
         println("")
 
         where:
-        pokemonNameParam << ["ditto", "pikachu", "bulbasaur", "charizard"] // POkemon names
+        pokemonNameParam << ["ditto", "pikachu", "bulbasaur", "charizard"] // Pokemon names
     }
 
+    @Unroll
     def "Check the location area of the Pokemons"() {
         given: "A Pokemon name"
         def pokemonName = pokemonNameParam // I set it in the where block
 
         when: "We send a request to fetch encounter data"
-        def encounterUrl = "https://pokeapi.co/api/v2/pokemon/${pokemonName}/encounters" // I have to change the url
-        def http = RequestWrapper.createHttpBuilder(encounterUrl)
-        def result = RequestWrapper.sendGetRequest(http)
+        def baseUrl = "https://pokeapi.co"
+        def path = "/api/v2/pokemon/${pokemonName}/encounters"
+        def http = RequestWrapper.createHttpBuilder(baseUrl)
+        def result = RequestWrapper.sendGetRequest(http, path, [:])
         encounterJson = result.responseJson
 
         then: "The encounter response should be valid"
+        assert result.statusLine != null : "No status line received from API call."
         result.statusLine.statusCode == 200
 
         and: "Print the location information"
@@ -65,10 +65,10 @@ class PokemonAPI extends Specification {
         println("")
 
         where:
-        pokemonNameParam << ["ditto", "pikachu", "bulbasaur","charizard"] // POkemon names
+        pokemonNameParam << ["ditto", "pikachu", "bulbasaur", "charizard"] // Pokemon names
     }
-
 }
+
 
 
 
