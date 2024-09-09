@@ -98,6 +98,35 @@ class ReqRes extends Specification {
         cleanup:
         connection.disconnect()
     }
+
+    def "POST request test with ReqresAPI"() {
+        given:
+        def baseUrl = "https://reqres.in"
+        def http = RequestWrapper.createHttpBuilder(baseUrl)
+
+        and: "The request body to be sent"
+        def requestBody = [
+            "email": "eve.holt@reqres.in",
+            "password": "cityslicka"
+        ]
+
+        when: "The API POST request is sent"
+        def result = RequestWrapper.sendPostRequest(http, '/api/login', requestBody)
+        def statusCode = result.statusLine.statusCode
+        def responseJson = result.responseJson
+
+
+        then: "Ensure that we received a status code"
+        assert statusCode != null : "No status code received from API call."
+
+        then: "The status code should be 200 (Ok)"
+        statusCode == 200
+
+        and: "The response should contain the posted data"
+        responseJson != null
+        def token = responseJson.token
+        token == "QpwL5tke4Pnpja7X4"
+    }
 }
 
 
