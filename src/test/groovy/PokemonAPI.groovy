@@ -73,7 +73,7 @@ class PokemonAPI extends Specification {
                              "alola-route-1-east", "alola-route-1-west", "hauoli-city-shopping-district",
                              "heahea-city-surf-association"]
         "bulbasaur"       | ["cerulean-city-area", "pallet-town-area", "lumiose-city-area", "alola-route-2-main"]
-        "charizard"       | [""] // charizard has no location in the API db!
+        "charizard"       | [] // charizard has no location data in the API db!
     }
 }
 
