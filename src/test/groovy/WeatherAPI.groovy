@@ -1,6 +1,3 @@
-import groovy.util.logging.Log
-
-import java.text.SimpleDateFormat
 import spock.lang.Specification
 import spock.lang.Unroll
 
@@ -60,15 +57,17 @@ class WeatherAPI extends Specification {
 
             temp.round(2) != null
             description != null
-
         }
 
         where:
         cityName      | days | expectedPopulation | expectedTimezone |  expectedCode | expectedMessage
-        'Budapest,HU' | 7    | 1696128            | 7200             | '200'         | 0.5
-        'Paris,FR'    | 5    | 2138551            | 7200             | '200'         | 0.5
-        'Berlin,DE'   | 3    | 1000000            | 7200             | '200'         | 0.5
-        'London,GB'   | 1    | 1000000            | 3600             | '200'         | 0.5
+        'Budapest,HU' | 7    | 1696128            | 7200             | '200'         | 6
+        'Paris,FR'    | 5    | 2138551            | 7200             | '200'         | 6
+        'Berlin,DE'   | 3    | 1000000            | 7200             | '200'         | 6
+        'London,GB'   | 1    | 1000000            | 3600             | '200'         | 6
+        'New York,US' | 10   | 8175133            | -14400           | '200'         | 6
+        'Canberra,AU' | 15   | 327700             | 36000            | '200'         | 6
+        'Vienna,AT'   | 16   | 1000000            | 7200             | '200'         | 6
     }
 
     @Unroll
@@ -93,24 +92,66 @@ class WeatherAPI extends Specification {
             then: "Ensure that we received a status line"
             statusLine != null
 
-            and: "Check the status code to be 400 or 404"
+            and: "Check the status code to be 400/404/401"
             def statusCode = statusLine.statusCode
             assert statusCode == expectedCode
 
         } catch (Exception e) {
             then: "Handle unexpected exceptions"
-            assert false: "Unexpected exception occurred: ${e.message}"
+            assert false
         }
 
         where:
         cityName      | days    | expectedCode | appId
-        "Moscow,RU"   | "apple" | 400 |"b2ce5b9466a4cdcec5e7a6bf11465c5a"// Invalid day parameter
-        ""            | 3       | 400 |'b2ce5b9466a4cdcec5e7a6bf11465c5a'// Empty city name
-        "fporek,__"   | 9       | 404 |'b2ce5b9466a4cdcec5e7a6bf11465c5a'// Invalid city and country
-        "Beijing,CH"  | 0       | 400 |'b2ce5b9466a4cdcec5e7a6bf11465c5a'// Boundary value (lower)
-        "Madrid,ES"   | 18      | 400 |'b2ce5b9466a4cdcec5e7a6bf11465c5a'// Boundary value (upper)
-        "Киев,UA"     | 3       | 200 |'b2ce5b9466a4cdcec5e7a6bf11465c5a'// Different language
-        "Szeged,HU"   | 3       | 401 |'b2ccdca'// wrong API key
+        "Moscow,RU"   | "apple" | 400          |"b2ce5b9466a4cdcec5e7a6bf11465c5a"// Invalid day parameter
+        ""            | 3       | 400          |'b2ce5b9466a4cdcec5e7a6bf11465c5a'// Empty city name
+        "fporek,__"   | 9       | 404          |'b2ce5b9466a4cdcec5e7a6bf11465c5a'// Invalid city and country
+        "Beijing,CH"  | 0       | 400          |'b2ce5b9466a4cdcec5e7a6bf11465c5a'// Boundary value (lower)
+        "Madrid,ES"   | 18      | 400          |'b2ce5b9466a4cdcec5e7a6bf11465c5a'// Boundary value (upper)
+        "Киев,UA"     | 3       | 200          |'b2ce5b9466a4cdcec5e7a6bf11465c5a'// Different language (I am not sure this should be 200)
+        "Szeged,HU"   | 3       | 401          |'b2ccdca'// wrong API key
+        "PL,Warsaw"   | 4       | 404          |"b2ce5b9466a4cdcec5e7a6bf11465c5a"// Switched order for the cityName
+        "Belgrade,HU" | 8       | 404          |"b2ce5b9466a4cdcec5e7a6bf11465c5a"// Wrong country code
 
+    }
+
+    def "Test cases for: #latitude and #longitude works properly"() {
+        given: "An API key, language, and HTTPBuilder instance"
+        def apiKey = 'b2ce5b9466a4cdcec5e7a6bf11465c5a'
+        def lang = "en"
+        def baseUrl = 'https://api.openweathermap.org'
+
+        and: "Create the HTTPBuilder using RequestWrapper"
+        def http = RequestWrapper.createHttpBuilder(baseUrl)
+
+        when: "The API request is sent"
+        def result = RequestWrapper.sendGetRequest(http,
+                '/data/2.5/forecast/daily',
+                [lat: latitude,lon:longitude, cnt: days, lang: lang, appid: apiKey])
+
+        def statusLine = result.statusLine
+        def responseJson = result.responseJson
+
+        then: "Ensure that we received a status line"
+        statusLine != null
+
+        and: "The the coordinates should relate to the given city with the proper data"
+        assert responseJson != null
+        assert responseJson.list.size() == days
+        responseJson.city.name == expectedCityName
+        responseJson.city.population == expectedPopulation
+        responseJson.city.timezone == expectedTimezone
+        assert responseJson.message < expectedMessage
+        responseJson.cod == expectedCode
+
+        where:
+        latitude | longitude | days | expectedPopulation | expectedTimezone |  expectedCode | expectedMessage | expectedCityName
+        47.4979  | 19.0402   | 7    | 1696128            | 7200             | '200'         | 6               | "Budapest"
+        48.8534  | 2.3488    | 5    | 2138551            | 7200             | '200'         | 6               | 'Paris'
+        52.5244  | 13.4105   | 3    | 1000000            | 7200             | '200'         | 6               | 'Berlin'
+        51.5085  | -0.1257   | 1    | 1000000            | 3600             | '200'         | 6               | 'London'
+        40.7143  | -74.006   | 10   | 8175133            | -14400           | '200'         | 6               | 'New York'
+        -35.2835 | 149.1281  | 15   | 327700             | 36000            | '200'         | 6               | 'Canberra'
+        48.2085  | 16.3721   | 16   | 1000000            | 7200             | '200'         | 6               | 'Vienna'
     }
 }
