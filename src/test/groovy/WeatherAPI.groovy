@@ -1,27 +1,37 @@
+import spock.lang.Shared
 import spock.lang.Specification
 import spock.lang.Unroll
 
 class WeatherAPI extends Specification {
 
+    @Shared apiKey = 'b2ce5b9466a4cdcec5e7a6bf11465c5a'
+    @Shared lang = "en"
+    @Shared baseUrl = 'https://api.openweathermap.org'
+    @Shared path = '/data/2.5/forecast/daily'
+    @Shared RequestWrapper requestWrapper
+    @Shared defaultQueryParams
+
+    def setupSpec() {
+        // Shared RequestWrapper initialization
+        requestWrapper = new RequestWrapper(baseUrl)
+    }
+
+    def setup() {
+        // Set up common query parameters that are reused in multiple tests
+        defaultQueryParams = [lang: lang, appid: apiKey]
+    }
+
     @Unroll
     def "Positive test cases for: #cityName, #days, #expectedPopulation, #expectedTimezone, #expectedCode "() {
-        given: "An API key, language, and RequestWrapper instance"
-        def apiKey = 'b2ce5b9466a4cdcec5e7a6bf11465c5a'
-        def lang = "en"
-        def baseUrl = 'https://api.openweathermap.org'
-
-        and: "Create the RequestWrapper using its constructor"
-        def requestWrapper = new RequestWrapper(baseUrl)
-
         when: "The API request is sent"
-        def result = requestWrapper.sendGetRequest(
-                '/data/2.5/forecast/daily',
-                [q: cityName, cnt: days, lang: lang, appid: apiKey])
+        // Merge common query params with specific ones
+        def queryParams = defaultQueryParams + [q: cityName, cnt: days]
+        def result = requestWrapper.sendGetRequest(path, queryParams)
 
         def statusLine = result.statusLine
         def responseJson = result.responseJson
 
-        then: "Ensure that we received a status line"
+        then: "Ensure that a status line is received"
         statusLine != null
 
         and: "The response should contain forecast data for the expected number of days"
@@ -61,7 +71,7 @@ class WeatherAPI extends Specification {
         }
 
         where:
-        cityName      | days | expectedPopulation | expectedTimezone |  expectedCode | expectedMessage
+        cityName      | days | expectedPopulation | expectedTimezone | expectedCode | expectedMessage
         'Budapest,HU' | 7    | 1696128            | 7200             | '200'         | 6
         'Paris,FR'    | 5    | 2138551            | 7200             | '200'         | 6
         'Berlin,DE'   | 3    | 1000000            | 7200             | '200'         | 6
@@ -72,24 +82,15 @@ class WeatherAPI extends Specification {
     }
 
     @Unroll
-    def "Negative test cases for #cityName, #days,#expectedCode, #appId"() {
-        given: "An API key, language, and RequestWrapper instance"
-        def apiKey = appId
-        def lang = "en"
-        def baseUrl = 'https://api.openweathermap.org'
-
-        and: "Create the RequestWrapper using its constructor"
-        def requestWrapper = new RequestWrapper(baseUrl)
-
+    def "Negative test cases for #cityName, #days, #expectedCode, #appId"() {
         when: "The API request is sent"
-        def result = requestWrapper.sendGetRequest(
-                '/data/2.5/forecast/daily',
-                [q: cityName, cnt: days, lang: lang, appid: apiKey])
+        def queryParams = defaultQueryParams + [q: cityName, cnt: days, appid: appId]
+        def result = requestWrapper.sendGetRequest(path, queryParams)
 
         def statusLine = result.statusLine
         def responseJson = result.responseJson
 
-        then: "Ensure that we received a status line"
+        then: "Ensure that a status line is received"
         statusLine != null
 
         and: "Check the status code to be 400/404/401"
@@ -103,35 +104,26 @@ class WeatherAPI extends Specification {
 
         where:
         cityName      | days    | expectedCode | appId                             | expectedError
-        "Moscow,RU"   | "apple" | 400          |"b2ce5b9466a4cdcec5e7a6bf11465c5a" |"apple is not a number"// Invalid day parameter
-        ""            | 3       | 400          |'b2ce5b9466a4cdcec5e7a6bf11465c5a' |"Nothing to geocode"// Empty city name
-        "fporek,__"   | 9       | 404          |'b2ce5b9466a4cdcec5e7a6bf11465c5a' |"city not found"// Invalid city and country
-        "Beijing,CH"  | 0       | 400          |'b2ce5b9466a4cdcec5e7a6bf11465c5a' |"cnt from 1 to 17"// Boundary value (lower)
-        "Madrid,ES"   | 18      | 400          |'b2ce5b9466a4cdcec5e7a6bf11465c5a' |"cnt from 1 to 17"// Boundary value (upper)
-        "Киев,UA"     | 3       | 200          |'b2ce5b9466a4cdcec5e7a6bf11465c5a' |"Bad request"// Different language (I am not sure this should be 200)
-        "Szeged,HU"   | 3       | 401          |'b2ccdca'                          |"Invalid API key. Please see https://openweathermap.org/faq#error401 for more info."// wrong API key
-        "PL,Warsaw"   | 4       | 404          |"b2ce5b9466a4cdcec5e7a6bf11465c5a" |"city not found"// Switched order for the cityName
-        "Belgrade,HU" | 8       | 404          |"b2ce5b9466a4cdcec5e7a6bf11465c5a" |"city not found"// Wrong country code
+        "Moscow,RU"   | "apple" | 400          | "b2ce5b9466a4cdcec5e7a6bf11465c5a" | "apple is not a number" // Invalid day parameter
+        ""            | 3       | 400          | 'b2ce5b9466a4cdcec5e7a6bf11465c5a' | "Nothing to geocode"    // Empty city name
+        "fporek,__"   | 9       | 404          | 'b2ce5b9466a4cdcec5e7a6bf11465c5a' | "city not found"        // Invalid city and country
+        "Beijing,CH"  | 0       | 400          | 'b2ce5b9466a4cdcec5e7a6bf11465c5a' | "cnt from 1 to 17"      // Boundary value (lower)
+        "Madrid,ES"   | 18      | 400          | 'b2ce5b9466a4cdcec5e7a6bf11465c5a' | "cnt from 1 to 17"      // Boundary value (upper)
+        "Киев,UA"     | 3       | 200          | 'b2ce5b9466a4cdcec5e7a6bf11465c5a' | "Bad request"           // Different language
+        "Szeged,HU"   | 3       | 401          | 'b2ccdca'                          | "Invalid API key. Please see https://openweathermap.org/faq#error401 for more info."       // Wrong API key
+        "PL,Warsaw"   | 4       | 404          | "b2ce5b9466a4cdcec5e7a6bf11465c5a" | "city not found"        // Switched order for cityName
+        "Belgrade,HU" | 8       | 404          | "b2ce5b9466a4cdcec5e7a6bf11465c5a" | "city not found"        // Wrong country code
     }
 
     def "Test cases for: #latitude and #longitude works properly"() {
-        given: "An API key, language, and RequestWrapper instance"
-        def apiKey = 'b2ce5b9466a4cdcec5e7a6bf11465c5a'
-        def lang = "en"
-        def baseUrl = 'https://api.openweathermap.org'
-
-        and: "Create the RequestWrapper using its constructor"
-        def requestWrapper = new RequestWrapper(baseUrl)
-
         when: "The API request is sent"
-        def result = requestWrapper.sendGetRequest(
-                '/data/2.5/forecast/daily',
-                [lat: latitude, lon: longitude, cnt: days, lang: lang, appid: apiKey])
+        def queryParams = defaultQueryParams + [lat: latitude, lon: longitude, cnt: days]
+        def result = requestWrapper.sendGetRequest(path, queryParams)
 
         def statusLine = result.statusLine
         def responseJson = result.responseJson
 
-        then: "Ensure that we received a status line"
+        then: "Ensure that a status line is received"
         statusLine != null
 
         and: "The coordinates should relate to the given city with the proper data"
@@ -154,3 +146,4 @@ class WeatherAPI extends Specification {
         48.2085  | 16.3721   | 16   | 1000000            | 7200             | '200'         | 6               | 'Vienna'
     }
 }
+

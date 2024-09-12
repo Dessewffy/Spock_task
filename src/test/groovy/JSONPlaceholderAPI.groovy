@@ -1,18 +1,38 @@
+import spock.lang.Shared
 import spock.lang.Specification
 import spock.lang.Unroll
 
-class JSONPlaceholderAPI extends Specification{
+class JSONPlaceholderAPI extends Specification {
+
+
+    @Shared baseURL = "https://jsonplaceholder.typicode.com"
+
+    @Shared RequestWrapper requestWrapper
+
+    def setupSpec() {
+        requestWrapper = new RequestWrapper(baseURL)
+    }
+
+    def performApiGetRequest(String path) {
+        def result = requestWrapper.sendGetRequest(path)
+        def statusCode = result.statusLine.statusCode
+        def responseJson = result.responseJson
+        return [statusCode: statusCode, responseJson: responseJson]
+    }
+
+    def performApiPostRequest(String path, Map<String, Object> requestBody) {
+        def result = requestWrapper.sendPostRequest(path, requestBody)
+        def statusCode = result.statusLine.statusCode
+        def responseJson = result.responseJson
+        return [statusCode: statusCode, responseJson: responseJson]
+    }
 
     @Unroll
     def "should get post with ID #postId"() {
-        given: "HTTP client initialized"
-        def baseURL = "https://jsonplaceholder.typicode.com"
-        def http = RequestWrapper.createHttpBuilder(baseURL)
-
         when: "The API GET request is sent for post ID #postId"
-        def result = RequestWrapper.sendGetRequest(http, "/posts/${postId}")
-        def statusCode = result.statusLine.statusCode
-        def responseJson = result.responseJson
+        def apiResponse = performApiGetRequest("/posts/${postId}")
+        def statusCode = apiResponse.statusCode
+        def responseJson = apiResponse.responseJson
 
         then: "Ensure that we received a status code"
         assert statusCode != null : "No status code received from API call."
@@ -35,11 +55,7 @@ class JSONPlaceholderAPI extends Specification{
     }
 
     def "Should fetch post with #userId"() {
-        given: "HTTP client initialized"
-        def baseURL = "https://jsonplaceholder.typicode.com"
-        def http = RequestWrapper.createHttpBuilder(baseURL)
-
-        and:"The request body to be sent"
+        given: "The request body to be sent"
         def requestBody = [
                 title: 'foo',
                 body : 'bar',
@@ -47,9 +63,9 @@ class JSONPlaceholderAPI extends Specification{
         ]
 
         when: "The API POST request is sent"
-        def result = RequestWrapper.sendPostRequest(http, '/posts', requestBody)
-        def statusCode = result.statusLine.statusCode
-        def responseJson = result.responseJson
+        def apiResponse = performApiPostRequest('/posts', requestBody)
+        def statusCode = apiResponse.statusCode
+        def responseJson = apiResponse.responseJson
 
         then: "Ensure that we received a status code"
         assert statusCode != null : "No status code received from API call."
@@ -64,11 +80,10 @@ class JSONPlaceholderAPI extends Specification{
         responseJson.body == expectedBody
         responseJson.title == expectedTitle
 
-
-        where: "It is just an example parametrization"
+        where:
         userId | expectedId | expecteduserId | expectedBody | expectedTitle
         1      | 101        | 1              | "bar"        | "foo"
         2      | 101        | 2              | "bar"        | "foo"
-
     }
 }
+

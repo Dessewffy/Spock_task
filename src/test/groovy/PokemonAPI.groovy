@@ -1,10 +1,18 @@
 import spock.lang.Specification
 import spock.lang.Unroll
+import spock.lang.Shared
 
 class PokemonAPI extends Specification {
 
-    def responseJson
-    def encounterJson
+    @Shared
+    RequestWrapper requestWrapper
+    @Shared
+    def baseUrl = "https://pokeapi.co"
+
+    def setupSpec() {
+        // Initialize RequestWrapper only once for all tests
+        requestWrapper = new RequestWrapper(baseUrl)
+    }
 
     @Unroll
     def "Check the Pokemon data"() {
@@ -12,11 +20,9 @@ class PokemonAPI extends Specification {
         def pokemonName = pokemonNameParam
 
         when: "We send a request to fetch Pokemon data"
-        def baseUrl = "https://pokeapi.co"
         def path = "/api/v2/pokemon/${pokemonName}"
-        def http = RequestWrapper.createHttpBuilder(baseUrl)
-        def result = RequestWrapper.sendGetRequest(http, path, [:])
-        responseJson = result.responseJson
+        def result = requestWrapper.sendGetRequest(path, [:])
+        def responseJson = result.responseJson
 
         then: "The response should be valid"
         assert result.statusLine != null : "No status line received from API call."
@@ -29,13 +35,12 @@ class PokemonAPI extends Specification {
         responseJson.base_experience == expectedXp
 
         where:
-        pokemonNameParam  |expectedPokemonName| expectedHeight | expectedId | expectedXp
-        "ditto"           |"ditto"             | 3              | 132        | 101
-        "pikachu"         |"pikachu"           | 4              | 25         | 112
-        "bulbasaur"       |"balbasaur"         | 7              | 1          | 64
-        "charizard"       |"charizard"         | 17             | 6          | 267
+        pokemonNameParam  | expectedPokemonName | expectedHeight | expectedId | expectedXp
+        "ditto"           | "ditto"             | 3              | 132        | 101
+        "pikachu"         | "pikachu"           | 4              | 25         | 112
+        "bulbasaur"       | "bulbasaur"         | 7              | 1          | 64
+        "charizard"       | "charizard"         | 17             | 6          | 267
     }
-
 
     @Unroll
     def "Check the location area of the Pokemons"() {
@@ -43,11 +48,9 @@ class PokemonAPI extends Specification {
         def pokemonName = pokemonNameParam
 
         when: "We send a request to fetch encounter data"
-        def baseUrl = "https://pokeapi.co"
         def path = "/api/v2/pokemon/${pokemonName}/encounters"
-        def http = RequestWrapper.createHttpBuilder(baseUrl)
-        def result = RequestWrapper.sendGetRequest(http, path, [:])
-        encounterJson = result.responseJson
+        def result = requestWrapper.sendGetRequest(path, [:])
+        def encounterJson = result.responseJson
 
         then: "The encounter response should be valid"
         assert result.statusLine != null : "No status line received from API call."
@@ -56,7 +59,6 @@ class PokemonAPI extends Specification {
         and: "The location information should match the expected locations"
         def actualLocations = encounterJson.collect { it.location_area.name }
         actualLocations.containsAll(expectedLocations)
-
 
         where:
         pokemonNameParam  | expectedLocations
